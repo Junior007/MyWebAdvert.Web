@@ -160,7 +160,7 @@ namespace MyWebAdvert.Web.Controllers
             //if (ModelState.IsValid)
             {
                 var user = _pool.GetUser(confirmNewPasswordModel.Email);
-                var result = await user.ConfirmForgotPasswordAsync(confirmNewPasswordModel.Code, confirmNewPasswordModel.Password);
+                await user.ConfirmForgotPasswordAsync(confirmNewPasswordModel.Code, confirmNewPasswordModel.Password);
                 //if (result.Succeeded)
                     return RedirectToAction("Index", "Home");
 
