@@ -45,7 +45,7 @@ namespace MyWebAdvert.Web.Controllers
             {
                 if (ModelState.IsValid)
                 {
-                    var user = _pool.GetUser(model.Email);
+                    CognitoUser user = _pool.GetUser(model.Email);
                     if (user.Status != null)
                     {
                         ModelState.AddModelError("UserExists", "User with this email already exists");
@@ -55,7 +55,7 @@ namespace MyWebAdvert.Web.Controllers
                     //user.Attributes.Add(CognitoAttributesConstants.Name, model.Email);
                     user.Attributes.Add(CognitoAttribute.Name.AttributeName, model.Email);
                     user.Attributes.Add(CognitoAttribute.Email.AttributeName, model.Email);
-                    var createdUser = await _userManager.CreateAsync(user, model.Password).ConfigureAwait(false);
+                    IdentityResult createdUser = await _userManager.CreateAsync(user, model.Password).ConfigureAwait(false);
 
                     if (createdUser.Succeeded) return RedirectToAction("Confirm");
                     else ModelState.AddModelError("createdUserError", string.Join<string>(" - ", createdUser.Errors.Select(error => error.Description).ToList()));
@@ -83,18 +83,18 @@ namespace MyWebAdvert.Web.Controllers
         {
             if (ModelState.IsValid)
             {
-                var user = await _userManager.FindByEmailAsync(model.Email).ConfigureAwait(false);
+                CognitoUser user = await _userManager.FindByEmailAsync(model.Email).ConfigureAwait(false);
                 if (user == null)
                 {
                     ModelState.AddModelError("NotFound", "A user with the given email address was not found");
                     return View(model);
                 }
 
-                var result = await ((CognitoUserManager<CognitoUser>)_userManager)
-                    .ConfirmSignUpAsync(user, model.Code, true).ConfigureAwait(false);
-                if (result.Succeeded) return RedirectToAction("Index", "Home");
-                else ModelState.AddModelError("ConfirmPost", string.Join<string>(" - ", result.Errors.Select(error => error.Description).ToList()));
-                //foreach (var item in result.Errors) ModelState.AddModelError(item.Code, item.Description);
+                IdentityResult result = await ((CognitoUserManager<CognitoUser>)_userManager).ConfirmSignUpAsync(user, model.Code, true).ConfigureAwait(false);
+                if (result.Succeeded)
+                    return RedirectToAction("Index", "Home");
+                else //ModelState.AddModelError("ConfirmPost", string.Join<string>(" - ", result.Errors.Select(error => error.Description).ToList()));
+                    foreach (var item in result.Errors) ModelState.AddModelError(item.Code, item.Description);
 
                 return View(model);
             }
@@ -114,8 +114,7 @@ namespace MyWebAdvert.Web.Controllers
         {
             if (ModelState.IsValid)
             {
-                var result = await _signInManager.PasswordSignInAsync(model.Email,
-                    model.Password, model.RememberMe, false).ConfigureAwait(false);
+                Microsoft.AspNetCore.Identity.SignInResult result = await _signInManager.PasswordSignInAsync(model.Email, model.Password, model.RememberMe, false).ConfigureAwait(false);
                 if (result.Succeeded)
                     return RedirectToAction("Index", "Home");
                 ModelState.AddModelError("LoginError", "Email and password do not match");
@@ -147,7 +146,7 @@ namespace MyWebAdvert.Web.Controllers
             var user = _pool.GetUser(forgotPassword.Email);
             await user.ForgotPasswordAsync();
 
-            ConfirmNewPasswordModel confirmNewPasswordModel = new ConfirmNewPasswordModel {Email= forgotPassword.Email };
+            ConfirmNewPasswordModel confirmNewPasswordModel = new ConfirmNewPasswordModel { Email = forgotPassword.Email };
 
             return View("ConfirmNewPassword", confirmNewPasswordModel);
         }
@@ -156,16 +155,16 @@ namespace MyWebAdvert.Web.Controllers
         [HttpPost]
         [ActionName("ConfirmNewPassword")]
         public async Task<IActionResult> ConfirmNewPassword(ConfirmNewPasswordModel confirmNewPasswordModel)
-        {//string confirmation, string email, string newpassword)
+        {
             //if (ModelState.IsValid)
             {
                 var user = _pool.GetUser(confirmNewPasswordModel.Email);
                 await user.ConfirmForgotPasswordAsync(confirmNewPasswordModel.Code, confirmNewPasswordModel.Password);
-                //if (result.Succeeded)
-                    return RedirectToAction("Index", "Home");
+                return RedirectToAction("Index", "Home");
 
-            //}
-            //return View(confirmNewPasswordModel);
+                //}
+                //return View(confirmNewPasswordModel);
+            }
         }
     }
 }
